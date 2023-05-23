@@ -1,6 +1,7 @@
 package com.example.jettriviaapp.di
 
 import com.example.jettriviaapp.network.JetQuestionAPI
+import com.example.jettriviaapp.repos.JetQuestionAPIRepo
 import com.example.jettriviaapp.utils.BASE_URL
 import dagger.Module
 import dagger.Provides
@@ -15,6 +16,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 class AppModule{
 
+    @Provides
+    @Singleton
+    fun provideQuestionRepo(jetQuestionAPI: JetQuestionAPI) = JetQuestionAPIRepo(jetQuestionAPI)
     @Provides
     @Singleton
     fun provideJetQuestionAPI() = Retrofit.Builder()

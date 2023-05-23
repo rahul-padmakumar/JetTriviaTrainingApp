@@ -74,6 +74,9 @@ dependencies {
     //LifeCycle KTX
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.1"
 
+    //LifeCycle Compose
+    implementation "androidx.lifecycle:lifecycle-runtime-compose:2.6.1"
+
     //Navigation
     implementation "androidx.navigation:navigation-runtime-ktx:2.5.3"
     implementation "androidx.navigation:navigation-ui-ktx:2.5.3"
