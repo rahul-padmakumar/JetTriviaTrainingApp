@@ -1,15 +1,18 @@
 package com.example.jettriviaapp.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
@@ -25,6 +28,10 @@ import com.example.jettriviaapp.utils.TriviaColors
 @Composable
 fun QuestionsUI(data: State<DataOrException<List<Result?>>>){
 
+    val questionIndex = remember {
+        mutableStateOf(0)
+    }
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -35,7 +42,15 @@ fun QuestionsUI(data: State<DataOrException<List<Result?>>>){
                 CircularProgressIndicator()
             }
             data.value.data != null -> {
-                MainQuestionDisplay()
+
+                val question = data.value.data?.get(questionIndex.value)
+
+                MainQuestionDisplay(
+                    question,
+                    questionIndex
+                ){
+                    questionIndex.value = it + 1
+                }
             }
             data.value.data != null -> {
                 Text(text = data.value.exception?.message ?: "")
@@ -45,7 +60,32 @@ fun QuestionsUI(data: State<DataOrException<List<Result?>>>){
 }
 
 @Composable
-fun MainQuestionDisplay(){
+fun MainQuestionDisplay(
+    result: Result?,
+    index: MutableState<Int>,
+    onNextClicked: (Int) -> Unit
+) {
+
+    val choicesState = remember(result) {
+        result?.incorrect_answers?.toMutableList()?.apply {
+            add(result.correct_answer)
+        } ?: mutableListOf()
+    }
+
+    val answerState = remember(result){
+        mutableStateOf<Int?>(null)
+    }
+
+    val correctAnswerState = remember(result) {
+        mutableStateOf<Boolean?>(null)
+    }
+
+    val updateAnswer: (Int) -> Unit = remember(result) {
+        {
+            answerState.value = it
+            correctAnswerState.value = choicesState[it] == result?.correct_answer
+        }
+    }
 
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), phase = 0f)
 
@@ -59,8 +99,104 @@ fun MainQuestionDisplay(){
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start
         ) {
-            QuestionTracker()
+            QuestionTracker(count = index.value)
             DottedDivider(pathEffect = pathEffect)
+            Column{
+                Text(
+                    text = "${result?.question}",
+                    modifier = Modifier
+                        .padding(6.dp)
+                        .align(alignment = Alignment.Start)
+                        .fillMaxHeight(0.3f),
+                    color = TriviaColors.mOffWhite,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 22.sp
+                )
+
+                choicesState.forEachIndexed { index, s ->
+                    Row(
+                        modifier = Modifier
+                            .padding(3.dp)
+                            .fillMaxWidth()
+                            .height(45.dp)
+                            .border(
+                                width = 4.dp,
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        TriviaColors.mOffDarkPurple,
+                                        TriviaColors.mOffDarkPurple
+                                    ),
+                                ),
+                                shape = RoundedCornerShape(15.dp)
+                            )
+                            .clip(
+                                RoundedCornerShape(
+                                    topStartPercent = 50,
+                                    topEndPercent = 50,
+                                    bottomEndPercent = 50,
+                                    bottomStartPercent = 50
+                                )
+                            )
+                            .background(
+                                Color.Transparent
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ){
+                        RadioButton(
+                            selected = answerState.value == index,
+                            onClick = {updateAnswer(index)},
+                            modifier = Modifier.padding(
+                                start = 16.dp
+                            ),
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = if(correctAnswerState.value == true && index == answerState.value){
+                                    Color.Green.copy(alpha = 0.2f)
+                                } else {
+                                    Color.Red.copy(alpha = 0.2f)
+                                }
+                            )
+                        )
+                        val annotatedString = buildAnnotatedString {
+                            withStyle(
+                                style = SpanStyle(
+                                    fontWeight = FontWeight.Light,
+                                    color = if(correctAnswerState.value == true && answerState.value == index){
+                                        Color.Green
+                                    } else if(correctAnswerState.value == false && answerState.value == index){
+                                        Color.Red
+                                    } else {
+                                        TriviaColors.mOffWhite
+                                    },
+                                    fontSize = 16.sp
+                                )
+                            ){
+                                append(s)
+                            }
+                        }
+                        Text(text =  annotatedString, modifier = Modifier.padding(6.dp))
+                    }
+                }
+
+                Button(
+                    onClick = {onNextClicked(index.value)},
+                    modifier = Modifier
+                        .padding(3.dp)
+                        .align(alignment = Alignment.CenterHorizontally),
+                    shape = RoundedCornerShape(34.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = TriviaColors.mLightBlue
+                    )
+                ){
+                    Text(
+                        text = "Next",
+                        modifier = Modifier.padding(4.dp),
+                        color = TriviaColors.mOffWhite,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+
         }
     }
 }
