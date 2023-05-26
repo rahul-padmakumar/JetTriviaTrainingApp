@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.ButtonDefaults.buttonColors
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,12 +45,16 @@ fun QuestionsUI(data: State<DataOrException<List<Result?>>>){
             data.value.data != null -> {
 
                 val question = data.value.data?.get(questionIndex.value)
+                val size = data.value.data?.size ?: 0
 
                 MainQuestionDisplay(
                     question,
-                    questionIndex
+                    questionIndex,
+                    size
                 ){
-                    questionIndex.value = it + 1
+                    if(questionIndex.value < (size - 1)) {
+                        questionIndex.value = it + 1
+                    }
                 }
             }
             data.value.data != null -> {
@@ -63,6 +68,7 @@ fun QuestionsUI(data: State<DataOrException<List<Result?>>>){
 fun MainQuestionDisplay(
     result: Result?,
     index: MutableState<Int>,
+    totalCount: Int,
     onNextClicked: (Int) -> Unit
 ) {
 
@@ -80,10 +86,23 @@ fun MainQuestionDisplay(
         mutableStateOf<Boolean?>(null)
     }
 
+    val scoreState = remember {
+        mutableStateOf(0)
+    }
+
     val updateAnswer: (Int) -> Unit = remember(result) {
         {
-            answerState.value = it
-            correctAnswerState.value = choicesState[it] == result?.correct_answer
+            if(it != answerState.value) {
+                answerState.value = it
+                correctAnswerState.value = choicesState[it] == result?.correct_answer
+                if (correctAnswerState.value == true) {
+                    scoreState.value = scoreState.value + 1
+                } else if (correctAnswerState.value == false) {
+                    if (scoreState.value > 0) {
+                        scoreState.value = scoreState.value - 1
+                    }
+                }
+            }
         }
     }
 
@@ -99,7 +118,10 @@ fun MainQuestionDisplay(
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start
         ) {
-            QuestionTracker(count = index.value)
+            if(scoreState.value > 0) {
+                ShowProgress(score = scoreState.value, totalCount)
+            }
+            QuestionTracker(count = index.value + 1, outOf = totalCount)
             DottedDivider(pathEffect = pathEffect)
             Column{
                 Text(
@@ -145,7 +167,7 @@ fun MainQuestionDisplay(
                     ){
                         RadioButton(
                             selected = answerState.value == index,
-                            onClick = {updateAnswer(index)},
+                            onClick = { updateAnswer(index) },
                             modifier = Modifier.padding(
                                 start = 16.dp
                             ),
@@ -184,7 +206,7 @@ fun MainQuestionDisplay(
                         .padding(3.dp)
                         .align(alignment = Alignment.CenterHorizontally),
                     shape = RoundedCornerShape(34.dp),
-                    colors = ButtonDefaults.buttonColors(
+                    colors = buttonColors(
                         backgroundColor = TriviaColors.mLightBlue
                     )
                 ){
@@ -237,5 +259,54 @@ fun DottedDivider(pathEffect: PathEffect){
             end = Offset(size.width, 0f),
             pathEffect = pathEffect
         )
+    }
+}
+
+@Composable
+fun ShowProgress(score: Int, totalCount: Int){
+
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFF95075),
+            Color(0xFFBE65EB)
+        )
+    )
+
+    Row(
+        modifier = Modifier
+            .padding(3.dp)
+            .fillMaxWidth()
+            .height(45.dp)
+            .border(
+                width = 4.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(TriviaColors.mOffDarkPurple, TriviaColors.mOffDarkPurple)
+                ),
+                shape = RoundedCornerShape(32.dp)
+            )
+            .clip(
+                RoundedCornerShape(
+                    topEndPercent = 50,
+                    topStartPercent = 50,
+                    bottomStartPercent = 50,
+                    bottomEndPercent = 50
+                )
+            )
+    ){
+        Button(
+            contentPadding = PaddingValues(1.dp),
+            onClick = {},
+            modifier = Modifier
+                .fillMaxWidth(score/totalCount.toFloat())
+                .background(gradient),
+            enabled = false,
+            elevation = null,
+            colors = buttonColors(
+                backgroundColor = Color.Transparent,
+                disabledBackgroundColor = Color.Transparent
+            )
+        ) {
+            Text(text = score.toString())
+        }
     }
 }
